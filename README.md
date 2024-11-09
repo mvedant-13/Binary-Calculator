@@ -1,3 +1,5 @@
 # Binary-Calculator
-bc command of linux
-DSA mini project
+bc command of linux <br>
+DSA mini project <br>
+
+<b> Features: </b>
