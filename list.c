@@ -70,6 +70,27 @@ void append_digit(number *num, int digit) {
     num->size++;
 }
 
+void prepend_digit(number *num, int digit) {
+    digit_node *nn = (digit_node *)malloc(sizeof(digit_node));
+    if(nn == NULL) {
+        return;
+    }
+    nn->digit = digit;
+    nn->prev = NULL;
+    nn->next = NULL;
+
+    if(num->head == NULL) {
+        num->head = nn;
+        num->tail = nn;
+    }
+    else {
+        nn->next = num->head;
+        num->head->prev = nn;
+        num->head = nn;
+    }
+    num->size++;
+}
+
 void rem_lead_zero(number *num) {
     digit_node *trav = num->head;
     while(trav != NULL && trav->digit == 0) {
