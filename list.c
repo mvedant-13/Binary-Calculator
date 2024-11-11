@@ -33,6 +33,7 @@ number *create_number(char *str) {
     }
 
     rem_lead_zero(num);
+    return num;
 }
 
 void free_number(number *num) {
