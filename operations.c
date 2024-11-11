@@ -1,5 +1,6 @@
 #include "operations.h"
 
+/* Conversions */
 char *number_to_str(number *num) {
     if(num == NULL) {
         return NULL;
@@ -27,6 +28,35 @@ char *number_to_str(number *num) {
     return str;
 }
 
+number *str_to_number(char *str) {
+    if(str == NULL) {
+        return NULL;
+    }
+
+    number *num = (number *)malloc(sizeof(number));
+    if(num == NULL) {
+        return NULL;
+    }
+    num->head = NULL;
+    num->tail = NULL;
+    num->size = 0;
+    num->sign = 0;
+
+    int i = 0;
+    if(str[i] == '-') {
+        num->sign = 1;
+        i++;
+    }
+
+    while(str[i] != '\0') {
+        append_digit(num, str[i] - '0');
+        i++;
+    }
+
+    return num;
+}
+
+/* Basic Arithmetic Operations */
 number *add(number *a, number *b) {
     if(a == NULL || b == NULL) {
         return NULL;
@@ -148,6 +178,7 @@ number *subtract(number *a, number *b) {
     return diff;
 }
 
+/* Token Operations */
 token *create_token(token_type type, char *value) {
     token *t = (token *)malloc(sizeof(token));
     if(t == NULL) {
@@ -173,61 +204,220 @@ token **tokenize(char *str) {
         return NULL;
     }
 
-    token_stack *s = create_token_stack();
-    if(s == NULL) {
-        return NULL;
-    }
-
-    token **tokens = (token **)malloc(sizeof(token *));
+    token **tokens = (token **)malloc(strlen(str) * sizeof(token *));
     if(tokens == NULL) {
         return NULL;
     }
 
     int i = 0;
+    int j = 0;
     while(str[i] != '\0') {
-        if(str[i] == ' ') {
-            i++;
-            continue;
-        }
-
-        if(str[i] >= '0' && str[i] <= '9') {
-            int j = i;
-            while(str[j] >= '0' && str[j] <= '9') {
-                j++;
-            }
-            char *num = (char *)malloc(j - i + 1);
-            if(num == NULL) {
+        if(str[i] == '+' || str[i] == '-' || str[i] == '*' || str[i] == '/' || str[i] == '%' || str[i] == '(' || str[i] == ')') {
+            char *value = (char *)malloc(2);
+            if(value == NULL) {
                 return NULL;
             }
-            int k = 0;
-            while(i < j) {
-                num[k] = str[i];
-                i++;
+            value[0] = str[i];
+            value[1] = '\0';
+
+            if(str[i] == '(' || str[i] == ')') {
+                tokens[j] = create_token(PARENTHESIS, value);
+            }
+            else {
+                tokens[j] = create_token(OPERATOR, value);
+            }
+            j++;
+            i++;
+        }
+        else if(str[i] >= '0' && str[i] <= '9') {
+            int k = i;
+            while(str[k] >= '0' && str[k] <= '9') {
                 k++;
             }
-            num[k] = '\0';
-            tokens = (token **)realloc(tokens, (s->size + 1) * sizeof(token *));
-            tokens[s->size] = create_token(NUMBER, num);
-            push_token(s, tokens[s->size]);
-
-            free(num);
-            continue;   
+            char *value = (char *)malloc(k - i - 1);
+            if(value == NULL) {
+                return NULL;
+            }
+            strncpy(value, str + i, k - i);
+            value[k - i] = '\0';
+            tokens[j] = create_token(NUMBER, value);
+            j++;
+            i = k;
         }
-
-        char *op = (char *)malloc(2);
-        if(op == NULL) {
-            return NULL;
+        else {
+            i++;
         }
-        op[0] = str[i];
-        op[1] = '\0';
-        tokens = (token **)realloc(tokens, (s->size + 1) * sizeof(token *));
-        tokens[s->size] = create_token(OPERATOR, op);
-        push_token(s, tokens[s->size]);
+    }
+    tokens[j] = NULL;
 
-        i++;
-        free(op);
+    return tokens;
+}
+
+void free_tokens(token **tokens) {
+    if(tokens == NULL) {
+        return;
     }
 
-    free_token_stack(s);
-    return tokens;
+    int i = 0;
+    while(tokens[i] != NULL) {
+        free_token(tokens[i]);
+        i++;
+    }
+    free(tokens);
+}
+
+/* Shunting Yard Algorithm */
+int precedence(char *op) {
+    if(strcmp(op, "+") == 0 || strcmp(op, "-") == 0) {
+        return 1;
+    }
+    else if(strcmp(op, "*") == 0 || strcmp(op, "/") == 0 || strcmp(op, "%%") == 0) {
+        return 2;
+    }
+    else {
+        return 0;
+    }
+}
+
+token **infix_to_postfix(token **infix, int size) {
+    if(infix == NULL) {
+        return NULL;
+    }
+
+    token **postfix = (token **)malloc(size * sizeof(token *));
+    if(postfix == NULL) {
+        return NULL;
+    }
+
+    stack *s = create_stack();
+    if(s == NULL) {
+        return NULL;
+    }
+
+    int i = 0;
+    int j = 0;
+    while(infix[i] != NULL) {
+        if(infix[i]->type == NUMBER) {
+            postfix[j] = infix[i];
+            j++;
+            i++;
+        }
+        else if(infix[i]->type == OPERATOR) {
+            while(!is_empty(*s) && precedence(peek(*s)->value) >= precedence(infix[i]->value)) {
+                postfix[j] = pop(s);
+                j++;
+            }
+            push(s, infix[i]);
+            i++;
+        }
+        else if(infix[i]->type == PARENTHESIS) {
+            if(strcmp(infix[i]->value, "(") == 0) {
+                push(s, infix[i]);
+            }
+            else {
+                while(!is_empty(*s) && strcmp(peek(*s)->value, "(") != 0) {
+                    postfix[j] = pop(s);
+                    j++;
+                }
+                pop(s);
+            }
+            i++;
+        }
+    }
+
+    while(!is_empty(*s)) {
+        postfix[j] = pop(s);
+        j++;
+    }
+    postfix[j] = NULL;
+
+    free_stack(s);
+    return postfix;
+}
+
+number *evaluate_postfix(token **postfix, int size) {
+    if(postfix == NULL) {
+        return NULL;
+    }
+
+    stack *s = create_stack();
+    if(s == NULL) {
+        return NULL;
+    }
+
+    int i = 0;
+    while(postfix[i] != NULL) {
+        if(postfix[i]->type == NUMBER) {
+            push(s, postfix[i]);
+        }
+        else if(postfix[i]->type == OPERATOR) {
+            number *b = str_to_number(pop(s)->value);
+            number *a = str_to_number(pop(s)->value);
+            number *result = NULL;
+            if(strcmp(postfix[i]->value, "+") == 0) {
+                result = add(a, b);
+            }
+            else if(strcmp(postfix[i]->value, "-") == 0) {
+                result = subtract(a, b);
+            }
+            // else if(strcmp(postfix[i]->value, "*") == 0) {
+            //     result = multiply(a, b);
+            // }
+            // else if(strcmp(postfix[i]->value, "/") == 0) {
+            //     result = divide(a, b);
+            // }
+            // else if(strcmp(postfix[i]->value, "%%") == 0) {
+            //     result = mod(a, b);
+            // }
+            push(s, create_token(NUMBER, number_to_str(result)));
+            free_number(a);
+            free_number(b);
+            free_number(result);
+        }
+        i++;
+    }
+
+    number *result = str_to_number(pop(s)->value);
+    free_stack(s);
+    return result;
+}
+
+/* Helper Functions */
+void getline(char **lineptr, size_t *n, FILE *stream) {
+    if(lineptr == NULL || n == NULL) {
+        return;
+    }
+
+    if(*lineptr == NULL) {
+        *lineptr = (char *)malloc(100 * sizeof(char));
+        if(*lineptr == NULL) {
+            return;
+        }
+    }
+
+    int i = 0;
+    char c = fgetc(stream);
+    while(c != '\n' && c != EOF) {
+        if(i == *n) {
+            *lineptr = (char *)realloc(*lineptr, 2 * (*n) * sizeof(char));
+            if(*lineptr == NULL) {
+                return;
+            }
+            *n *= 2;
+        }
+        (*lineptr)[i] = c;
+        i++;
+        c = fgetc(stream);
+    }
+    (*lineptr)[i] = '\0';
+
+    if(c == EOF) {
+        free(*lineptr);
+        *lineptr = NULL;
+
+        if(i == 0) {
+            return;
+        }
+        *n = 0;
+    }
 }

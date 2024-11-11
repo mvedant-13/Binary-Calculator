@@ -1,42 +1,43 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include "operations.h"
 
 int main() {
-    number *a = str_to_number("123456789");
-    number *b = str_to_number("987654321");
-    number *c = add(a, b);
-    number *d = subtract(a, b);
-    // number *e = multiply(a, b);
-    // number *f = divide(a, b);
-
-    char *str_a = number_to_str(a);
-    char *str_b = number_to_str(b);
-    char *str_c = number_to_str(c);
-    char *str_d = number_to_str(d);
-    // char *str_e = number_to_str(e);
-    // char *str_f = number_to_str(f);
-
-    printf("a = %s\n", str_a);
-    printf("b = %s\n", str_b);
-    printf("a + b = %s\n", str_c);
-    printf("a - b = %s\n", str_d);
-    // printf("a * b = %s\n", str_e);
-    // printf("a / b = %s\n", str_f);
-
-    free(str_a);
-    free(str_b);
-    free(str_c);
-    free(str_d);
-    // free(str_e);
-    // free(str_f);
-
-    free_number(a);
-    free_number(b);
-    free_number(c);
-    free_number(d);
-    // free_number(e);
-    // free_number(f);
-
+    char str[100];
+    number *result;
+    while(1) {
+        printf("Enter an expression (or 'q' to quit):\n");
+        fgets(str, 100, stdin);
+        str[strlen(str) - 1] = '\0';
+        
+        if(strcmp(str, "q") == 0) {
+            break;
+        }
+        printf("You entered: %s\n", str);
+        token **infix = tokenize(str);
+        printf("Tokens:\n");
+        int i = 0;
+        while(infix[i] != NULL) {
+            if(infix[i]->type == NUMBER) {
+                printf("NUMBER: %s\n", infix[i]->value);
+            }
+            else {
+                printf("OPERATOR: %s\n", infix[i]->value);
+            }
+            i++;
+        }
+        token **postfix = infix_to_postfix(infix, 10);
+        printf("Postfix:\n");
+        i = 0;
+        while(postfix[i] != NULL) {
+            if(postfix[i]->type == NUMBER) {
+                printf("NUMBER: %s\n", postfix[i]->value);
+            }
+            else {
+                printf("OPERATOR: %s\n", postfix[i]->value);
+            }
+            i++;
+        }
+        result = evaluate_postfix(postfix, 10);
+        printf("Result: = %s\n", number_to_str(result));
+    }
     return 0;
 }
