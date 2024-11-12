@@ -16,7 +16,7 @@ typedef struct number {
 } number;
 
 /* Initialization & cleanup */
-number *create_number(char *str);
+number *create_number();
 void free_number(number *num);
 
 /* Helper Functions */
@@ -24,4 +24,8 @@ void append_digit(number *num, int digit);
 void prepend_digit(number *num, int digit);
 void rem_lead_zero(number *num);
 int is_zero(number *num);
-int compare(number *a, number *b);  /* returns 1 if a > b, 0 if a == b, -1 if a < b */
+int cmp(number *a, number *b);
+
+/* Conversions */
+number *str_to_number(char *str);
+char *number_to_str(number *num);

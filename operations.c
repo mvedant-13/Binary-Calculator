@@ -1,190 +1,5 @@
 #include "operations.h"
 
-/* Conversions */
-char *number_to_str(number *num) {
-    if(num == NULL) {
-        return NULL;
-    }
-
-    digit_node *trav = num->head;
-    char *str = (char *)malloc(num->size + 2);
-    if(str == NULL) {
-        return NULL;
-    }
-
-    int i = 0;
-    if(num->sign == 1) {
-        str[i] = '-';
-        i++;
-    }
-
-    while(trav != NULL) {
-        str[i] = trav->digit + '0';
-        i++;
-        trav = trav->next;
-    }
-    str[i] = '\0';
-
-    return str;
-}
-
-number *str_to_number(char *str) {
-    if(str == NULL) {
-        return NULL;
-    }
-
-    number *num = (number *)malloc(sizeof(number));
-    if(num == NULL) {
-        return NULL;
-    }
-    num->head = NULL;
-    num->tail = NULL;
-    num->size = 0;
-    num->sign = 0;
-
-    int i = 0;
-    if(str[i] == '-') {
-        num->sign = 1;
-        i++;
-    }
-
-    while(str[i] != '\0') {
-        append_digit(num, str[i] - '0');
-        i++;
-    }
-
-    return num;
-}
-
-/* Basic Arithmetic Operations */
-number *add(number *a, number *b) {
-    if(a == NULL || b == NULL) {
-        return NULL;
-    }
-
-    number *sum = (number *)malloc(sizeof(number));
-    if(sum == NULL) {
-        return NULL;
-    }
-    sum->head = NULL;
-    sum->tail = NULL;
-    sum->size = 0;
-    sum->sign = 0;
-
-    if(a->sign == b->sign) {
-        sum->sign = a->sign;
-    }
-    else {
-        if(a->sign == 1) {
-            a->sign = 0;
-            return subtract(b, a);
-        }
-        else {
-            b->sign = 0;
-            return subtract(a, b);
-        }
-    }
-
-    digit_node *trav_a = a->tail;
-    digit_node *trav_b = b->tail;
-    int carry = 0;
-    while(trav_a != NULL || trav_b != NULL) {
-        int a_digit = 0;
-        int b_digit = 0;
-        if(trav_a != NULL) {
-            a_digit = trav_a->digit;
-            trav_a = trav_a->prev;
-        }
-        if(trav_b != NULL) {
-            b_digit = trav_b->digit;
-            trav_b = trav_b->prev;
-        }
-
-        int s = a_digit + b_digit + carry;
-        carry = s / 10;
-        prepend_digit(sum, s % 10);
-    }
-    if(carry != 0) {
-        prepend_digit(sum, carry);
-    }
-
-    rem_lead_zero(sum);
-    return sum;
-}
-
-number *subtract(number *a, number *b) {
-    if(a == NULL || b == NULL) {
-        return NULL;
-    }
-
-    number *diff = (number *)malloc(sizeof(number));
-    if(diff == NULL) {
-        return NULL;
-    }
-    diff->head = NULL;
-    diff->tail = NULL;
-    diff->size = 0;
-    diff->sign = 0;
-
-    if(a->sign == b->sign) {
-        if(a->sign == 1) {
-            a->sign = 0;
-            b->sign = 0;
-            return subtract(b, a);
-        }
-    }
-    else {
-        if(a->sign == 1) {
-            b->sign = 1;
-            return add(a, b);
-        }
-        else {
-            b->sign = 0;
-            return add(a, b);
-        }
-    }
-
-    if(cmp(a, b) == -1) {
-        number *temp = a;
-        a = b;
-        b = temp;
-        diff->sign = 1;
-    }
-
-    digit_node *trav_a = a->tail;
-    digit_node *trav_b = b->tail;
-    int borrow = 0;
-    while(trav_a != NULL || trav_b != NULL) {
-        int a_digit = 0;
-        int b_digit = 0;
-        if(trav_a != NULL) {
-            a_digit = trav_a->digit;
-            trav_a = trav_a->prev;
-        }
-        if(trav_b != NULL) {
-            b_digit = trav_b->digit;
-            trav_b = trav_b->prev;
-        }
-
-        int d = a_digit - b_digit - borrow;
-        if(d < 0 && trav_a != NULL) {
-            d += 10;
-            borrow = 1;
-        }
-        else {
-            borrow = 0;
-        }
-        prepend_digit(diff, d);
-    }
-
-    if(borrow != 0) {
-        diff->sign = 1;
-    }
-
-    rem_lead_zero(diff);;
-    return diff;
-}
-
 /* Token Operations */
 token *create_token(token_type type, char *value) {
     token *t = (token *)malloc(sizeof(token));
@@ -219,7 +34,7 @@ token **tokenize(char *str) {
     int i = 0;
     int j = 0;
     while(str[i] != '\0') {
-        if(str[i] == '+' || str[i] == '-' || str[i] == '*' || str[i] == '/' || str[i] == '%' || str[i] == '(' || str[i] == ')') {
+        if(str[i] == '+' || str[i] == '-' || str[i] == '*' || str[i] == '/' || str[i] == '(' || str[i] == ')') {
             if(str[i] == '(' && str[i + 1] == '-') {
                 i = i + 2;
                 int k = i;
@@ -293,12 +108,225 @@ void free_tokens(token **tokens) {
     free(tokens);
 }
 
+/* Basic Arithmetic Operations */
+number *add(number *a, number *b) {
+    if(a == NULL || b == NULL) {
+        return NULL;
+    }
+
+    number *sum = create_number();
+
+    if(a->sign == b->sign) {
+        sum->sign = a->sign;
+    }
+    else {
+        if(a->sign == 1) {
+            a->sign = 0;
+            return subtract(b, a);
+        }
+        else {
+            b->sign = 0;
+            return subtract(a, b);
+        }
+    }
+
+    digit_node *trav_a = a->tail;
+    digit_node *trav_b = b->tail;
+    int carry = 0;
+    while(trav_a != NULL || trav_b != NULL) {
+        int a_digit = 0;
+        int b_digit = 0;
+        if(trav_a != NULL) {
+            a_digit = trav_a->digit;
+            trav_a = trav_a->prev;
+        }
+        if(trav_b != NULL) {
+            b_digit = trav_b->digit;
+            trav_b = trav_b->prev;
+        }
+
+        int s = a_digit + b_digit + carry;
+        carry = s / 10;
+        prepend_digit(sum, s % 10);
+    }
+    if(carry != 0) {
+        prepend_digit(sum, carry);
+    }
+
+    rem_lead_zero(sum);
+    return sum;
+}
+
+number *subtract(number *a, number *b) {
+    if(a == NULL || b == NULL) {
+        return NULL;
+    }
+
+    number *diff = create_number();
+
+    if(a->sign == b->sign) {
+        if(a->sign == 1) {
+            a->sign = 0;
+            b->sign = 0;
+            return subtract(b, a);
+        }
+    }
+    else {
+        if(a->sign == 1) {
+            b->sign = 1;
+            return add(a, b);
+        }
+        else {
+            b->sign = 0;
+            return add(a, b);
+        }
+    }
+
+    if(cmp(a, b) == -1) {
+        number *temp = a;
+        a = b;
+        b = temp;
+        diff->sign = 1;
+    }
+    else if(cmp(a, b) == 0) {
+        append_digit(diff, 0);
+        return diff;
+    }
+
+    digit_node *trav_a = a->tail;
+    digit_node *trav_b = b->tail;
+    int borrow = 0;
+    while(trav_a != NULL || trav_b != NULL) {
+        int a_digit = 0;
+        int b_digit = 0;
+        if(trav_a != NULL) {
+            a_digit = trav_a->digit;
+            trav_a = trav_a->prev;
+        }
+        if(trav_b != NULL) {
+            b_digit = trav_b->digit;
+            trav_b = trav_b->prev;
+        }
+
+        int d = a_digit - b_digit - borrow;
+        if(d < 0 && trav_a != NULL) {
+            d += 10;
+            borrow = 1;
+        }
+        else {
+            borrow = 0;
+        }
+        prepend_digit(diff, d);
+    }
+
+    if(borrow != 0) {
+        diff->sign = 1;
+    }
+
+    rem_lead_zero(diff);
+
+    if(is_zero(diff)) {
+        diff->sign = 0;
+    }
+    return diff;
+}
+
+number *multiply(number *a, number *b) {
+    if(a == NULL || b == NULL) {
+        return NULL;
+    }
+
+    number *prod = create_number();
+
+    digit_node *trav_a = a->tail;
+    digit_node *trav_b = b->tail;
+    int i = 0;
+    while(trav_b != NULL) {
+        number *temp = create_number();
+        int carry = 0;
+
+        while(trav_a != NULL) {
+            int p = trav_a->digit * trav_b->digit + carry;
+            carry = p / 10;
+            prepend_digit(temp, p % 10);
+            trav_a = trav_a->prev;
+        }
+        if(carry != 0) {
+            prepend_digit(temp, carry);
+        }
+        for(int j = 0; j < i; j++) {
+            append_digit(temp, 0);
+        }
+        // printf("temp: %s\n", number_to_str(temp));
+        prod = add(prod, temp);
+        free_number(temp);
+        trav_a = a->tail;
+        trav_b = trav_b->prev;
+        i++;
+    }
+
+    if(a->sign == b->sign) {
+        prod->sign = 0;
+    }
+    else {
+        prod->sign = 1;
+    }
+
+    rem_lead_zero(prod);
+    return prod;
+}
+
+number *divide(number *a, number *b) {
+    if(a == NULL || b == NULL) {
+        return NULL;
+    }
+
+    number *quot = create_number();
+
+    if(b->size == 1 && b->head->digit == 0) {
+        return NULL;
+    }
+
+    if(a->sign == b->sign) {
+        quot->sign = 0;
+    }
+    else {
+        quot->sign = 1;
+    }
+    a->sign = 0;
+    b->sign = 0;
+
+    number *temp = create_number();
+    digit_node *trav = a->head;
+    while(trav != NULL) {
+        append_digit(temp, trav->digit);
+        rem_lead_zero(temp);
+        int q = 0;
+        while(cmp(temp, b) != -1) {
+            temp = subtract(temp, b);
+            // printf("temp: %s\n", number_to_str(temp));
+            q++;
+        }
+        append_digit(quot, q);
+        trav = trav->next;
+
+        if(is_zero(temp)) {
+            free_number(temp);
+            temp = create_number();
+        }
+    }
+
+    free_number(temp);
+    rem_lead_zero(quot);
+    return quot;
+}
+
 /* Shunting Yard Algorithm */
 int precedence(char *op) {
     if(strcmp(op, "+") == 0 || strcmp(op, "-") == 0) {
         return 1;
     }
-    else if(strcmp(op, "*") == 0 || strcmp(op, "/") == 0 || strcmp(op, "%%") == 0) {
+    else if(strcmp(op, "*") == 0 || strcmp(op, "/") == 0) {
         return 2;
     }
     else {
@@ -387,15 +415,12 @@ number *evaluate_postfix(token **postfix, int size) {
             else if(strcmp(postfix[i]->value, "-") == 0) {
                 result = subtract(a, b);
             }
-            // else if(strcmp(postfix[i]->value, "*") == 0) {
-            //     result = multiply(a, b);
-            // }
-            // else if(strcmp(postfix[i]->value, "/") == 0) {
-            //     result = divide(a, b);
-            // }
-            // else if(strcmp(postfix[i]->value, "%%") == 0) {
-            //     result = mod(a, b);
-            // }
+            else if(strcmp(postfix[i]->value, "*") == 0) {
+                result = multiply(a, b);
+            }
+            else if(strcmp(postfix[i]->value, "/") == 0) {
+                result = divide(a, b);
+            }
             push(s, create_token(NUMBER, number_to_str(result)));
             free_number(a);
             free_number(b);
@@ -447,38 +472,4 @@ void getline(char **lineptr, size_t *n, FILE *stream) {
         }
         *n = 0;
     }
-}
-
-int cmp(number *a, number *b) {
-    if(a == NULL || b == NULL) {
-        return 0;
-    }
-
-    if(a->sign > b->sign) {
-        return 1;
-    }
-    else if(a->sign < b->sign) {
-        return -1;
-    }
-
-    if(a->size > b->size) {
-        return 1;
-    }
-    else if(a->size < b->size) {
-        return -1;
-    }
-
-    digit_node *trav_a = a->head;
-    digit_node *trav_b = b->head;
-    while(trav_a != NULL) {
-        if(trav_a->digit > trav_b->digit) {
-            return 1;
-        }
-        else if(trav_a->digit < trav_b->digit) {
-            return -1;
-        }
-        trav_a = trav_a->next;
-        trav_b = trav_b->next;
-    }
-    return 0;
 }
