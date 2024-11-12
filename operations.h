@@ -24,3 +24,4 @@ number *evaluate_postfix(token **postfix, int size);
 
 /* Helper Functions */
 void getline(char **lineptr, size_t *n, FILE *stream);
+int cmp(number *a, number *b);

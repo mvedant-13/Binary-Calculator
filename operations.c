@@ -144,6 +144,13 @@ number *subtract(number *a, number *b) {
         }
     }
 
+    if(cmp(a, b) == -1) {
+        number *temp = a;
+        a = b;
+        b = temp;
+        diff->sign = 1;
+    }
+
     digit_node *trav_a = a->tail;
     digit_node *trav_b = b->tail;
     int borrow = 0;
@@ -160,7 +167,7 @@ number *subtract(number *a, number *b) {
         }
 
         int d = a_digit - b_digit - borrow;
-        if(d < 0) {
+        if(d < 0 && trav_a != NULL) {
             d += 10;
             borrow = 1;
         }
@@ -213,6 +220,26 @@ token **tokenize(char *str) {
     int j = 0;
     while(str[i] != '\0') {
         if(str[i] == '+' || str[i] == '-' || str[i] == '*' || str[i] == '/' || str[i] == '%' || str[i] == '(' || str[i] == ')') {
+            if(str[i] == '(' && str[i + 1] == '-') {
+                i = i + 2;
+                int k = i;
+                while(str[k] >= '0' && str[k] <= '9') {
+                    k++;
+                }
+                char *value = (char *)malloc(k - i);
+                if(value == NULL) {
+                    return NULL;
+                }
+                value[0] = '-';
+                strncpy(value + 1, str + i, k - i);
+                value[k - i + 1] = '\0';
+                tokens[j] = create_token(NUMBER, value);
+                j++;
+                i = k;
+                i++;
+                continue;
+            }
+
             char *value = (char *)malloc(2);
             if(value == NULL) {
                 return NULL;
@@ -420,4 +447,38 @@ void getline(char **lineptr, size_t *n, FILE *stream) {
         }
         *n = 0;
     }
+}
+
+int cmp(number *a, number *b) {
+    if(a == NULL || b == NULL) {
+        return 0;
+    }
+
+    if(a->sign > b->sign) {
+        return 1;
+    }
+    else if(a->sign < b->sign) {
+        return -1;
+    }
+
+    if(a->size > b->size) {
+        return 1;
+    }
+    else if(a->size < b->size) {
+        return -1;
+    }
+
+    digit_node *trav_a = a->head;
+    digit_node *trav_b = b->head;
+    while(trav_a != NULL) {
+        if(trav_a->digit > trav_b->digit) {
+            return 1;
+        }
+        else if(trav_a->digit < trav_b->digit) {
+            return -1;
+        }
+        trav_a = trav_a->next;
+        trav_b = trav_b->next;
+    }
+    return 0;
 }
