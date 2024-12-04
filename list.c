@@ -9,6 +9,7 @@ number *create_number() {
     num->tail = NULL;
     num->size = 0;
     num->sign = 0;
+    num->scale = 0;
     return num;
 }
 
@@ -71,6 +72,9 @@ void prepend_digit(number *num, int digit) {
 void rem_lead_zero(number *num) {
     digit_node *trav = num->head;
     while(trav != NULL && trav->digit == 0) {
+        if(num->scale == num->size - 1) {
+            break;
+        }        
         digit_node *temp = trav;
         trav = trav->next;
         free(temp);
@@ -80,7 +84,7 @@ void rem_lead_zero(number *num) {
     if(trav == NULL) {
         num->head = NULL;
         num->tail = NULL;
-        num->size = 1;
+        num->scale = 0;
         append_digit(num, 0);
     }
     else {
@@ -89,18 +93,48 @@ void rem_lead_zero(number *num) {
     }
 }
 
-int is_zero(number *num) {
-    digit_node *trav = num->head;
-    while(trav != NULL) {
-        if(trav->digit != 0) {
-            return 0;
-        }
-        trav = trav->next;
+void rem_trail_zero(number *num) {
+    digit_node *trav = num->tail;
+    while(trav != NULL && trav->digit == 0 && num->scale > 0) {
+        digit_node *temp = trav;
+        trav = trav->prev;
+        free(temp);
+        num->size--;
+        num->scale--;
     }
-    return 1;
+
+    if(trav == NULL) {
+        num->head = NULL;
+        num->tail = NULL;
+        num->scale = 0;
+        append_digit(num, 0);
+    }
+    else {
+        num->tail = trav;
+        trav->next = NULL;
+    }
+}
+
+void add_trail_zero(number *num, int count) {
+    if(num == NULL) {
+        return;
+    }
+
+    for(int i = 0; i < count; i++) {
+        append_digit(num, 0);
+    }
+
+    num->scale = num->scale + count;
+    num->size = num->size + count;
+}
+
+int is_zero(number *num) {
+    rem_lead_zero(num);
+    return num->head->digit == 0 && num->size == 1;
 }
 
 int cmp(number *a, number *b) {
+    int c = 0;
     if(a == NULL || b == NULL) {
         return 0;
     }
@@ -112,26 +146,36 @@ int cmp(number *a, number *b) {
         return -1;
     }
 
-    if(a->size > b->size) {
+    if((a->size - a->scale) > (b->size - b->scale)) {
         return 1;
     }
-    else if(a->size < b->size) {
+    else if((a->size - a->scale) < (b->size - b->scale)) {
         return -1;
     }
 
+    if(a->size > b->size) {
+        add_trail_zero(b, a->size - b->size);
+    }
+    else if(a->size < b->size) {
+        add_trail_zero(a, b->size - a->size);
+    }
     digit_node *trav_a = a->head;
     digit_node *trav_b = b->head;
     while(trav_a != NULL) {
         if(trav_a->digit > trav_b->digit) {
-            return 1;
+            c = 1;
+            break;
         }
         else if(trav_a->digit < trav_b->digit) {
-            return -1;
+            c = -1;
+            break;
         }
         trav_a = trav_a->next;
         trav_b = trav_b->next;
     }
-    return 0;
+    rem_trail_zero(a);
+    rem_trail_zero(b);
+    return c;
 }
 
 /* Conversions */
@@ -140,8 +184,10 @@ char *number_to_str(number *num) {
         return NULL;
     }
 
-    digit_node *trav = num->head;
-    char *str = (char *)malloc(num->size + 2);
+    rem_lead_zero(num);
+    rem_trail_zero(num);
+
+    char *str = (char *)malloc((num->size + 2) * sizeof(char));
     if(str == NULL) {
         return NULL;
     }
@@ -152,7 +198,15 @@ char *number_to_str(number *num) {
         i++;
     }
 
+    digit_node *trav = num->head;
     while(trav != NULL) {
+        if((num->scale > 0) && (i == num->size - num->scale + num->sign)) {
+            // printf("i: %d\n", i);
+            // printf("num->size: %d\n", num->size);
+            // printf("num->scale: %d\n", num->scale);
+            str[i] = '.';
+            i++;
+        }
         str[i] = trav->digit + '0';
         i++;
         trav = trav->next;
@@ -176,8 +230,43 @@ number *str_to_number(char *str) {
     }
 
     while(str[i] != '\0') {
+        if(str[i] == '.') {
+            num->scale = strlen(str) - i - 1;
+            i++;
+            continue;
+        }
         append_digit(num, str[i] - '0');
         i++;
+    }
+
+    return num;
+}
+
+int number_to_int(number *num) {
+    if(num == NULL) {
+        return 0;
+    }
+
+    int n = 0;
+    digit_node *trav = num->head;
+    while(trav != NULL) {
+        n = n* 10 + trav->digit;
+        trav = trav->next;
+    }
+
+    return n;
+}
+
+number *int_to_number(int n) {
+    number *num = create_number();
+    if(n < 0) {
+        num->sign = 1;
+        n = -n;
+    }
+
+    while(n > 0) {
+        prepend_digit(num, n % 10);
+        n = n / 10;
     }
 
     return num;

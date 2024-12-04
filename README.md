@@ -20,3 +20,34 @@ Trigonometric Functions: Includes sine (sin), cosine (cos), and tangent (tan) fu
 Users can set the precision (or “scale”) for decimal results, allowing control over the number of decimal places for division and trigonometric calculations. Example: scale = 10. <br>
 <b> 8. Built-in Constants </b> <br>
 Pi (π): Provides a built-in constant for π, which is useful for trigonometric calculations. <br>
+// printf("num->size: %d\n", num->size);
+    // printf("num->scale: %d\n", num->scale);
+    while(trav != NULL) {
+        if(num->scale > 0 && ((i + num->sign) == (num->size - num->scale))) {
+            str[i] = '.';
+            i++;
+        }
+        str[i] = trav->digit + '0';
+        i++;
+        trav = trav->next;
+    }
+    str[i] = '\0';
+    if(num == NULL) {
+        return NULL;
+    }
+
+    digit_node *trav = num->head;
+    char *str = (char *)malloc(num->size + 3);
+    if(str == NULL) {
+        return NULL;
+    }
+
+    int i = 0;
+    if(num->sign == 1) {
+        str[i] = '-';
+        i++;
+    }
+
+    
+
+    return str;

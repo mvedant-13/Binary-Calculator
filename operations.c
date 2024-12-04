@@ -1,4 +1,5 @@
 #include "operations.h"
+int scale = 5;
 
 stack *create_stack() {
     stack *s = (stack *)malloc(sizeof(stack));
@@ -96,11 +97,11 @@ token **tokenize(char *str) {
     int i = 0;
     int j = 0;
     while(str[i] != '\0') {
-        if(str[i] == '+' || str[i] == '-' || str[i] == '*' || str[i] == '/' || str[i] == '(' || str[i] == ')') {
+        if(is_operator(str[i]) || str[i] == '(' ||  str[i] == ')') {
             if(str[i] == '(' && str[i + 1] == '-') {
                 i = i + 2;
                 int k = i;
-                while(str[k] >= '0' && str[k] <= '9') {
+                while((str[k] >= '0' && str[k] <= '9') || str[k] == '.') {
                     k++;
                 }
                 char *value = (char *)malloc(k - i);
@@ -135,7 +136,7 @@ token **tokenize(char *str) {
         }
         else if(str[i] >= '0' && str[i] <= '9') {
             int k = i;
-            while(str[k] >= '0' && str[k] <= '9') {
+            while((str[k] >= '0' && str[k] <= '9') || str[k] == '.') {
                 k++;
             }
             char *value = (char *)malloc(k - i - 1);
@@ -176,6 +177,9 @@ number *add(number *a, number *b) {
         return NULL;
     }
 
+    // printf("a: %s\n", number_to_str(a));
+    // printf("b: %s\n", number_to_str(b));
+
     number *sum = create_number();
 
     if(a->sign == b->sign) {
@@ -190,6 +194,15 @@ number *add(number *a, number *b) {
             b->sign = 0;
             return subtract(a, b);
         }
+    }
+
+    if(a->scale > b->scale) {
+        sum->scale = a->scale;
+        add_trail_zero(b, a->scale - b->scale);
+    }
+    else {
+        sum->scale = b->scale;
+        add_trail_zero(a, b->scale - a->scale);
     }
 
     digit_node *trav_a = a->tail;
@@ -216,6 +229,9 @@ number *add(number *a, number *b) {
     }
 
     rem_lead_zero(sum);
+    rem_trail_zero(sum);
+    rem_trail_zero(a);
+    rem_trail_zero(b);
     return sum;
 }
 
@@ -255,6 +271,15 @@ number *subtract(number *a, number *b) {
         return diff;
     }
 
+    if(a->scale > b->scale) {
+        diff->scale = a->scale;
+        add_trail_zero(b, a->scale - b->scale);
+    }
+    else {
+        diff->scale = b->scale;
+        add_trail_zero(a, b->scale - a->scale);
+    }
+
     digit_node *trav_a = a->tail;
     digit_node *trav_b = b->tail;
     int borrow = 0;
@@ -286,6 +311,9 @@ number *subtract(number *a, number *b) {
     }
 
     rem_lead_zero(diff);
+    rem_trail_zero(diff);
+    rem_trail_zero(a);
+    rem_trail_zero(b);
 
     if(is_zero(diff)) {
         diff->sign = 0;
@@ -334,18 +362,22 @@ number *multiply(number *a, number *b) {
         prod->sign = 1;
     }
 
+    prod->scale = a->scale + b->scale;
+    rem_trail_zero(prod);
     rem_lead_zero(prod);
     return prod;
 }
 
 number *divide(number *a, number *b) {
+    // printf("a: %s\n", number_to_str(a));
+    // printf("b: %s\n", number_to_str(b));
     if(a == NULL || b == NULL) {
         return NULL;
     }
 
     number *quot = create_number();
 
-    if(b->size == 1 && b->head->digit == 0) {
+    if(is_zero(b)) {
         return NULL;
     }
 
@@ -357,6 +389,19 @@ number *divide(number *a, number *b) {
     }
     a->sign = 0;
     b->sign = 0;
+
+    number *temp_a = a;
+    number *temp_b = b;
+    if(a->scale > b->scale) {
+        a = multiply(a, power(int_to_number(10), int_to_number(temp_a->scale)));
+        b = multiply(b, power(int_to_number(10), int_to_number(temp_a->scale)));
+        // printf("a: %s\n", number_to_str(a));
+        // printf("b: %s\n", number_to_str(b));
+    }
+    else {
+        a = multiply(a, power(int_to_number(10), int_to_number(temp_b->scale)));
+        b = multiply(b, power(int_to_number(10), int_to_number(temp_b->scale)));
+    }
 
     number *temp = create_number();
     digit_node *trav = a->head;
@@ -371,16 +416,50 @@ number *divide(number *a, number *b) {
         }
         append_digit(quot, q);
         trav = trav->next;
+    }
 
-        if(is_zero(temp)) {
-            free_number(temp);
-            temp = create_number();
+    while((quot->scale < scale) && !is_zero(temp)) {
+        if(is_zero(quot)) {
+            append_digit(quot, 0);
         }
+
+        append_digit(temp, 0);
+        int q = 0;
+        while(cmp(temp, b) != -1) {
+            temp = subtract(temp, b);
+            q++;
+        }
+        append_digit(quot, q);
+        quot->scale++;
     }
 
     free_number(temp);
     rem_lead_zero(quot);
+    rem_trail_zero(quot);
+    
+    a = temp_a;
+    b = temp_b;
     return quot;
+}
+
+number *power(number *a, number *b) {
+    if(a == NULL || b == NULL) {
+        return NULL;
+    }
+
+    number *pow = create_number();
+    append_digit(pow, 1);
+
+    number *i = create_number();
+    append_digit(i, 0);
+
+    while(cmp(i, b) == -1) {
+        pow = multiply(pow, a);
+        i = add(i, int_to_number(1));
+    }
+
+    free_number(i);
+    return pow;
 }
 
 /* Shunting Yard Algorithm */
@@ -391,6 +470,9 @@ int precedence(char *op) {
     else if(strcmp(op, "*") == 0 || strcmp(op, "/") == 0) {
         return 2;
     }
+    else if(strcmp(op, "^") == 0) {
+        return 3;
+    }
     else {
         return 0;
     }
@@ -400,6 +482,12 @@ token **infix_to_postfix(token **infix, int size) {
     if(infix == NULL) {
         return NULL;
     }
+
+    // int m = 0;
+    // while(infix[m] != NULL) {
+    //     printf("Token: %s\n", infix[m]->value);
+    //     m++;
+    // }
 
     token **postfix = (token **)malloc(size * sizeof(token *));
     if(postfix == NULL) {
@@ -457,6 +545,12 @@ number *evaluate_postfix(token **postfix, int size) {
         return NULL;
     }
 
+    // int m = 0;
+    // while(postfix[m] != NULL) {
+    //     printf("Token: %s\n", postfix[m]->value);
+    //     m++;
+    // }
+
     stack *s = create_stack();
     if(s == NULL) {
         return NULL;
@@ -465,6 +559,7 @@ number *evaluate_postfix(token **postfix, int size) {
     int i = 0;
     while(postfix[i] != NULL) {
         if(postfix[i]->type == NUMBER) {
+            // printf("Number Push : %s\n", postfix[i]->value);
             push(s, postfix[i]);
         }
         else if(postfix[i]->type == OPERATOR) {
@@ -483,6 +578,9 @@ number *evaluate_postfix(token **postfix, int size) {
             else if(strcmp(postfix[i]->value, "/") == 0) {
                 result = divide(a, b);
             }
+            else if(strcmp(postfix[i]->value, "^") == 0) {
+                result = power(a, b);
+            }
             push(s, create_token(NUMBER, number_to_str(result)));
             free_number(a);
             free_number(b);
@@ -496,42 +594,49 @@ number *evaluate_postfix(token **postfix, int size) {
     return result;
 }
 
-/* Helper Functions */
-void getline(char **lineptr, size_t *n, FILE *stream) {
-    if(lineptr == NULL || n == NULL) {
-        return;
+int is_operator(char op) {
+    if(op == '+' || op == '-' || op == '*' || op == '/' || op == '^') {
+        return 1;
     }
-
-    if(*lineptr == NULL) {
-        *lineptr = (char *)malloc(100 * sizeof(char));
-        if(*lineptr == NULL) {
-            return;
-        }
-    }
-
-    int i = 0;
-    char c = fgetc(stream);
-    while(c != '\n' && c != EOF) {
-        if(i == *n) {
-            *lineptr = (char *)realloc(*lineptr, 2 * (*n) * sizeof(char));
-            if(*lineptr == NULL) {
-                return;
-            }
-            *n *= 2;
-        }
-        (*lineptr)[i] = c;
-        i++;
-        c = fgetc(stream);
-    }
-    (*lineptr)[i] = '\0';
-
-    if(c == EOF) {
-        free(*lineptr);
-        *lineptr = NULL;
-
-        if(i == 0) {
-            return;
-        }
-        *n = 0;
-    }
+    return 0;
 }
+
+// /* Helper Functions */
+// void getline(char **lineptr, size_t *n, FILE *stream) {
+//     if(lineptr == NULL || n == NULL) {
+//         return;
+//     }
+
+//     if(*lineptr == NULL) {
+//         *lineptr = (char *)malloc(100 * sizeof(char));
+//         if(*lineptr == NULL) {
+//             return;
+//         }
+//     }
+
+//     int i = 0;
+//     char c = fgetc(stream);
+//     while(c != '\n' && c != EOF) {
+//         if(i == *n) {
+//             *lineptr = (char *)realloc(*lineptr, 2 * (*n) * sizeof(char));
+//             if(*lineptr == NULL) {
+//                 return;
+//             }
+//             *n *= 2;
+//         }
+//         (*lineptr)[i] = c;
+//         i++;
+//         c = fgetc(stream);
+//     }
+//     (*lineptr)[i] = '\0';
+
+//     if(c == EOF) {
+//         free(*lineptr);
+//         *lineptr = NULL;
+
+//         if(i == 0) {
+//             return;
+//         }
+//         *n = 0;
+//     }
+// }
