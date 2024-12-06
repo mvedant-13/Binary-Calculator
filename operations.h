@@ -41,12 +41,14 @@ void free_token(token *t);
 token **tokenize(char *str);
 void free_tokens(token **tokens);
 int is_operator(char op);
+int is_trigo(char *str);
 
 /* Basic Arithmetic Operations */
 number *add(number *a, number *b);
 number *subtract(number *a, number *b);
 number *multiply(number *a, number *b);
 number *divide(number *a, number *b);
+number *modulo(number *a, number *b);
 number *power(number *a, number *b);
 
 /* Trigonometric Operations */

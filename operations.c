@@ -117,19 +117,6 @@ token **tokenize(char *str) {
                 continue;
             }
 
-            if(str[i] == 'l' && str[i + 1] == 'n') {
-                char *value = (char *)malloc(3);
-                if(value == NULL) {
-                    return NULL;
-                }
-                strncpy(value, str + i, 2);
-                value[2] = '\0';
-                tokens[j] = create_token(FUNCTION, value);
-                j++;
-                i = i + 2;
-                continue;
-            }
-
             char *value = (char *)malloc(2);
             if(value == NULL) {
                 return NULL;
@@ -163,6 +150,31 @@ token **tokenize(char *str) {
             i = k;
         }
         else if(str[i] >= 'a' && str[i] <= 'z') {
+            if(strncmp(str + i, "pi", 2) == 0) {
+                char *value = (char *)malloc(3);
+                if(value == NULL) {
+                    return NULL;
+                }
+                strncpy(value, str + i, 2);
+                value[2] = '\0';
+                tokens[j] = create_token(FUNCTION, value);
+                j++;
+                i = i + 2;
+                continue;
+            }
+            else if(is_trigo(&str[i])) {
+                char *value = (char *)malloc(4);
+                if(value == NULL) {
+                    return NULL;
+                }
+                strncpy(value, str + i, 3);
+                value[3] = '\0';
+                tokens[j] = create_token(FUNCTION, value);
+                j++;
+                i = i + 3;
+                continue;
+            }
+
             int k = i;
             while(str[k] >= 'a' && str[k] <= 'z') {
                 k++;
@@ -201,7 +213,14 @@ void free_tokens(token **tokens) {
 }
 
 int is_operator(char op) {
-    if(op == '+' || op == '-' || op == '*' || op == '/' || op == '^' || op == 'l' || op == '=') {
+    if(op == '+' || op == '-' || op == '*' || op == '/' || op == '^' || op == '=' || op == '%') {
+        return 1;
+    }
+    return 0;
+}
+
+int is_trigo(char *str) {
+    if(strncmp(str, "sin", 3) == 0 || strncmp(str, "cos", 3) == 0 || strncmp(str, "tan", 3) == 0 || strncmp(str, "csc", 3) == 0 || strncmp(str, "sec", 3) == 0 || strncmp(str, "cot", 3) == 0) {
         return 1;
     }
     return 0;
@@ -478,6 +497,48 @@ number *divide(number *a, number *b) {
     return quot;
 }
 
+number *modulo(number *a, number *b) {
+    if(a == NULL || b == NULL) {
+        return NULL;
+    }
+
+    if(is_zero(b)) {
+        return NULL;
+    }
+
+    number *temp_a = a;
+    number *temp_b = b;
+    if(a->scale > b->scale) {
+        a = multiply(a, power(int_to_number(10), int_to_number(temp_a->scale)));
+        b = multiply(b, power(int_to_number(10), int_to_number(temp_a->scale)));
+    }
+    else {
+        a = multiply(a, power(int_to_number(10), int_to_number(temp_b->scale)));
+        b = multiply(b, power(int_to_number(10), int_to_number(temp_b->scale)));
+    }
+
+    number *mod = create_number();
+    digit_node *trav = a->head;
+    while(trav != NULL) {
+        append_digit(mod, trav->digit);
+        rem_lead_zero(mod);
+        while(cmp(mod, b) != -1) {
+            mod = subtract(mod, b);
+        }
+        // printf("temp: %s\n", number_to_str(mod));
+        trav = trav->next;
+    }
+    // printf("temp: %s\n", number_to_str(mod));
+
+    rem_lead_zero(mod);
+    rem_trail_zero(mod);
+
+    // printf("mod: %s\n", number_to_str(mod));
+    a = temp_a;
+    b = temp_b;
+    return mod;
+}
+
 number *power(number *a, number *b) {
     if(a == NULL || b == NULL) {
         return NULL;
@@ -496,6 +557,107 @@ number *power(number *a, number *b) {
 
     free_number(i);
     return pow;
+}
+
+/* Trigonometric functions */
+number *sine(number *a) {
+    if(a == NULL) {
+        return NULL;
+    }
+
+    number *temp = modulo(a, int_to_number(360));
+    float f = number_to_float(temp);
+    free_number(temp);
+
+    f = f * PI / 180;
+    f = sin(f);
+    // if(f < 0.0000001) {
+    //     f = 0;
+    // }
+    // if(a->sign == 1) {
+    //     f = -f;
+    // }
+    // printf("f: %f\n", f);
+    return float_to_number(f);
+}
+
+number *cosine(number *a) {
+    if(a == NULL) {
+        return NULL;
+    }
+
+    number *temp = modulo(a, float_to_number(360));
+    float f = number_to_float(temp);
+    free_number(temp);
+
+    f = f * PI / 180;
+    f = cos(f);
+    // if(f < 0.0000001) {
+    //     f = 0;
+    // }
+    return float_to_number(f);
+}
+
+number *tangent(number *a) {
+    if(a == NULL) {
+        return NULL;
+    }
+
+    number *temp = modulo(a, float_to_number(360));
+    float f = number_to_float(temp);
+    free_number(temp);
+
+    f = f * PI / 180;
+    f = tan(f);
+    // if(f < 0.0000001) {
+    //     f = 0;
+    // }
+    return float_to_number(f);
+}
+
+number *cosecant(number *a) {
+    if(a == NULL) {
+        return NULL;
+    }
+
+    number *temp = sine(a);
+    if(temp == NULL) {
+        return NULL;
+    }
+
+    number *csc = divide(int_to_number(1), temp);
+    free_number(temp);
+    return csc;
+}
+
+number *secant(number *a) {
+    if(a == NULL) {
+        return NULL;
+    }
+
+    number *temp = cosine(a);
+    if(temp == NULL) {
+        return NULL;
+    }
+
+    number *sec = divide(int_to_number(1), temp);
+    free_number(temp);
+    return sec;
+}
+
+number *cotangent(number *a) {
+    if(a == NULL) {
+        return NULL;
+    }
+
+    number *temp = tangent(a);
+    if(temp == NULL) {
+        return NULL;
+    }
+
+    number *cot = divide(int_to_number(1), temp);
+    free_number(temp);
+    return cot;
 }
 
 /* Logarithmic functions */
@@ -681,6 +843,10 @@ number *evaluate_postfix(token **postfix, int size) {
             else if(strcmp(postfix[i]->value, "/") == 0) {
                 result = divide(a, b);
             }
+            else if(strcmp(postfix[i]->value, "%") == 0) {
+                // printf("Modulo\n");
+                result = modulo(a, b);
+            }
             else if(strcmp(postfix[i]->value, "^") == 0) {
                 result = power(a, b);
             }
@@ -695,6 +861,24 @@ number *evaluate_postfix(token **postfix, int size) {
             if(strcmp(postfix[i]->value, "ln") == 0) {
                 // printf("Logarithm\n");
                 result = logarithm(a);
+            }
+            else if(strcmp(postfix[i]->value, "sin") == 0) {
+                result = sine(a);
+            }
+            else if(strcmp(postfix[i]->value, "cos") == 0) {
+                result = cosine(a);
+            }
+            else if(strcmp(postfix[i]->value, "tan") == 0) {
+                result = tangent(a);
+            }
+            else if(strcmp(postfix[i]->value, "csc") == 0) {
+                result = cosecant(a);
+            }
+            else if(strcmp(postfix[i]->value, "sec") == 0) {
+                result = secant(a);
+            }
+            else if(strcmp(postfix[i]->value, "cot") == 0) {
+                result = cotangent(a);
             }
             push(s, create_token(NUMBER, number_to_str(result)));
             free_number(a);

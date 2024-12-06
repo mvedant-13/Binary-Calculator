@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #define TABLE_SIZE 26
 #define SCALE 5
+#define PI 3.14159265
 
 /* Structure to represent a number */
 typedef struct digit_node {
@@ -46,6 +48,9 @@ number *str_to_number(char *str);
 char *number_to_str(number *num);
 int number_to_int(number *num);
 number *int_to_number(int n);
+float number_to_float(number *num);
+number *float_to_number(float f);
+number *round_num(number *num);
 
 /* Hash Table Operations */
 int hash(char *name);

@@ -273,6 +273,92 @@ number *int_to_number(int n) {
     return num;
 }
 
+float number_to_float(number *num) {
+    if(num == NULL) {
+        return 0.0;
+    }
+
+    float f = 0.0;
+    digit_node *trav = num->head;
+    while(trav != NULL) {
+        f = f * 10 + trav->digit;
+        trav = trav->next;
+    }
+
+    return f / pow(10, num->scale);
+}
+
+number *float_to_number(float f) {
+    number *num = create_number();
+    if(f < 0) {
+        num->sign = 1;
+        f = -f;
+    }
+
+    int n = f;
+    float d = f - n;
+    while(n > 0) {
+        prepend_digit(num, n % 10);
+        n = n / 10;
+    }
+
+    if(num->size == 0) {
+        append_digit(num, 0);
+    }
+
+    while(d > 0 && num->scale < SCALE + 1) {
+        d = d * 10;
+        append_digit(num, d);
+        d = d - (int)d;
+        num->scale++;
+    }
+    // printf(" Scale %d\n", num->scale);
+    if(num->scale > SCALE) {
+        return round_num(num);
+    }
+    return num;
+}
+
+number *round_num(number *num) {
+    // printf("%s\n", number_to_str(num));
+    if(num == NULL) {
+        return NULL;
+    }
+
+    int carry;
+    if(num->tail->digit >= 5)  {
+        carry = 1;
+    }
+    else {
+        carry = 0;
+        return num;
+    }
+    // printf("SCALE %d\n", num->scale);
+    // num->scale = num->scale - 1;
+    // num->size = num->size - 1;
+    num->tail->digit = 0;
+    rem_trail_zero(num);
+    // printf("scale %d\n", num->scale);
+    // printf("%d\n", num->size);
+    // printf("%s\n", number_to_str(num));
+    digit_node *trav = num->tail;
+    while(trav != num->head && carry == 1) {
+        int d = trav->digit + carry;
+        // printf("d: %d\n", d);
+        if(d >= 10) {
+            d = d % 10;
+            carry = 1;
+        }
+        else {
+            carry = 0;
+        }
+        trav->digit = d;
+        // printf("d: %d\n", d);
+        trav = trav->prev;
+    }
+    return num;
+}
+
 /* Hash Table Operations */
 int hash(char *name) {
     int hash = 0;
