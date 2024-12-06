@@ -1,4 +1,5 @@
-#include "list.h"
+#include "number.h"
+variable *variables[TABLE_SIZE];
 
 number *create_number() {
     number *num = (number *)malloc(sizeof(number));
@@ -270,4 +271,68 @@ number *int_to_number(int n) {
     }
 
     return num;
+}
+
+/* Hash Table Operations */
+int hash(char *name) {
+    int hash = 0;
+    for(int i = 0; name[i] != '\0'; i++) {
+        hash = (hash + name[i]) % TABLE_SIZE;
+    }
+    return hash;
+}
+
+variable *create_variable(char *name, number *value) {
+    variable *var = (variable *)malloc(sizeof(variable));
+    if(var == NULL) {
+        return NULL;
+    }
+
+    var->name = (char *)malloc(strlen(name) * sizeof(char));
+    if(var->name == NULL) {
+        free(var);
+        return NULL;
+    }
+
+    strcpy(var->name, name);
+    var->value = value;
+    return var;
+}
+
+void free_variable(variable *var) {
+    if(var == NULL) {
+        return;
+    }
+
+    free(var->name);
+    free_number(var->value);
+    free(var);
+}
+
+void insert_variable(char *name, number *value) {
+    int index = hash(name);
+    variable *var = create_variable(name, value);
+    if(var == NULL) {
+        return;
+    }
+
+    variables[index] = var;
+    // printf("Variable %s inserted\n", name);
+}
+
+number *lookup_variable(char *name) {
+    int index = hash(name);
+    variable *trav = variables[index];
+    if((trav != NULL) && (strcmp(trav->name, name) == 0)) {
+        return trav->value;
+    }
+    // printf("Variable %s not found\n", name);
+    return NULL;
+}
+
+void free_variables() {
+    for(int i = 0; i < TABLE_SIZE; i++) {
+        free_variable(variables[i]);
+        variables[i] = NULL;
+    }
 }
