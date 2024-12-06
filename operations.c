@@ -117,16 +117,16 @@ token **tokenize(char *str) {
                 continue;
             }
 
-            if(str[i] == 'l' && str[i + 1] == 'o' && str[i + 2] == 'g') {
-                char *value = (char *)malloc(4);
+            if(str[i] == 'l' && str[i + 1] == 'n') {
+                char *value = (char *)malloc(3);
                 if(value == NULL) {
                     return NULL;
                 }
-                strncpy(value, str + i, 3);
-                value[3] = '\0';
+                strncpy(value, str + i, 2);
+                value[2] = '\0';
                 tokens[j] = create_token(FUNCTION, value);
                 j++;
-                i = i + 3;
+                i = i + 2;
                 continue;
             }
 
@@ -504,54 +504,30 @@ number *logarithm(number *a) {
         return NULL;
     }
 
-    number *log = create_number();
-    number *num = create_number();
-    number *den = create_number();
-    number *temp = create_number();
+    if(cmp(a, int_to_number(0)) <= 0) {
+        return NULL;
+    }
 
-    number *two = int_to_number(2);
-    number *ten = int_to_number(10);
-    number *one = int_to_number(1);
-
+    number *ln = int_to_number(0);
+    number *num = subtract(a, int_to_number(1));
+    number *den = add(a, int_to_number(1));
     number *i = int_to_number(1);
-    number *n = int_to_number(1);
-    number *x = subtract(a, one);
-    number *y = add(a, one);
-    number *z = divide(subtract(x, one), add(x, one));
 
     while(cmp(i, int_to_number(100)) == -1) {
-        num = add(num, divide(power(z, n), multiply(n, power(two, n))));
-        n = add(n, one);
-        num = subtract(num, divide(power(z, n), multiply(n, power(two, n))));
-        n = add(n, one);
-        i = add(i, one);
+        // printf("i: %s\n", number_to_str(i));
+        number *temp = divide(num, den);
+        temp = power(temp, i);
+        temp = divide(temp, i);
+        ln = add(ln, temp);
+        // printf("ln: %s\n", number_to_str(ln));
+        free_number(temp);
+        i = add(i, int_to_number(2));
     }
-
-    i = int_to_number(1);
-    n = int_to_number(1);
-    while(cmp(i, int_to_number(100)) == -1) {
-        den = add(den, divide(power(z, n), n));
-        n = add(n, one);
-        den = subtract(den, divide(power(z, n), n));
-        n = add(n, one);
-        i = add(i, one);
-    }
-
-    log = multiply(ten, divide(num, den));
 
     free_number(num);
     free_number(den);
-    free_number(temp);
-    free_number(two);
-    free_number(ten);
-    free_number(one);
     free_number(i);
-    free_number(n);
-    free_number(x);
-    free_number(y);
-    free_number(z);
-
-    return log;
+    return multiply(ln, int_to_number(2));
 }
 
 /* Shunting Yard Algorithm */
@@ -716,7 +692,8 @@ number *evaluate_postfix(token **postfix, int size) {
         else if(postfix[i]->type == FUNCTION) {
             number *a = str_to_number(pop(s)->value);
             number *result = NULL;
-            if(strcmp(postfix[i]->value, "log") == 0) {
+            if(strcmp(postfix[i]->value, "ln") == 0) {
+                // printf("Logarithm\n");
                 result = logarithm(a);
             }
             push(s, create_token(NUMBER, number_to_str(result)));

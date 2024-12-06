@@ -28,6 +28,9 @@ int main() {
         //     else if(infix[i]->type == VARIABLE) {
         //         printf("VARIABLE: %s\n", infix[i]->value);
         //     }
+        //     else if(infix[i]->type == FUNCTION) {
+        //         printf("FUNCTION: %s\n", infix[i]->value);
+        //     }
         //     else {
         //         printf("OPERATOR: %s\n", infix[i]->value);
         //     }
@@ -43,6 +46,9 @@ int main() {
         //     }
         //     else if(postfix[i]->type == VARIABLE) {
         //         printf("VARIABLE: %s\n", postfix[i]->value);
+        //     }
+        //     else if(postfix[i]->type == FUNCTION) {
+        //         printf("FUNCTION: %s\n", postfix[i]->value);
         //     }
         //     else {
         //         printf("OPERATOR: %s\n", postfix[i]->value);

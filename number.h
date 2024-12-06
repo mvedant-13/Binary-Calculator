@@ -3,7 +3,7 @@
 #include <string.h>
 
 #define TABLE_SIZE 26
-#define SCALE 10
+#define SCALE 5
 
 /* Structure to represent a number */
 typedef struct digit_node {
